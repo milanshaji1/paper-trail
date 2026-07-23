@@ -1,0 +1,18 @@
+{
+  "name": "market-pulse-dashboard",
+  "version": "1.0.0",
+  "description": "Auto-updating dashboard tracking stocks, S&P 500, indices, crypto, movers, opportunity signals and market news.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

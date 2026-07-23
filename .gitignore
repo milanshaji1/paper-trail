@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit API keys
+.env
+.env.local
+
+# Runtime state (the paper-trading books write here)
+data/*.json
+
+# Local tooling / editor config
+.claude/
+.impeccable/
+.DS_Store
+*.log
+
+# OS / scratch
+.vscode/
+.idea/

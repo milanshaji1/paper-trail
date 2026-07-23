@@ -1,0 +1,257 @@
+# 📈 Market Pulse — Live Market Dashboard & Self-Validating Trading Engine
+
+A self-hosted market terminal that screens **~1,550 US stocks + the top 50 crypto every
+60 seconds**, rates each name 1–5 from transparent sub-scores, and computes concrete
+entry timing with real price levels — then **backtests and forward paper-trades its own
+signals** so you can see whether they actually work before risking a cent.
+
+![node](https://img.shields.io/badge/node-%E2%89%A518-3c873a)
+![tests](https://img.shields.io/badge/tests-60%20passing-2ea44f)
+![deps](https://img.shields.io/badge/runtime%20deps-1%20(express)-blue)
+![license](https://img.shields.io/badge/license-MIT-lightgrey)
+
+![Market Pulse dashboard](docs/screenshot.png)
+
+## Why this project is different
+
+Most "stock screener" projects stop at *"here's a score."* This one asks the harder,
+more honest question: **do the scores actually beat just buying an index fund?** It ships
+with two engines built to answer that:
+
+- a **backtester** that replays 2–10 years of real history through the exact same decision
+  logic the live app uses, and
+- two **forward paper-trading books** ($100k simulated each) that trade the signals live and
+  track the result against an SPY buy-and-hold benchmark.
+
+**The honest result, reported in the app itself:** the momentum/breakout signal set
+**underperformed buy-and-hold** across three independent backtests (≈ −27 percentage points,
+28% win rate). Building the validation harness also surfaced **three separate bugs that had
+inflated backtest returns by 30+ points** — survivorship bias, a hindsight-selected universe,
+and stale entry pricing. The most valuable thing this app does is tell you when *not* to trust it.
+
+That's the point: transparent inputs, honest baselines, and a testing discipline that
+catches the ways a backtest lies — even when you're trying not to lie.
+
+## Tech & engineering
+
+- **Stack:** Node.js + Express backend, vanilla JS/HTML/CSS frontend — **one runtime dependency**,
+  no build step, no framework. Installable to a phone home screen (PWA).
+- **Data:** six free, no-key-required sources (CNBC, CoinGecko, Finnhub, FRED, Google News,
+  Wikipedia) plus embedded TradingView charts. Optional API keys unlock analyst consensus and
+  real macro series.
+- **Testing:** **60 automated tests** (`npm test`), written test-first, including *look-ahead
+  guards* that prove a decision made on day *t* cannot see day *t+1*.
+- **Architecture:** background refreshers keep a warm in-memory snapshot; the browser polls it,
+  so pages load instantly and upstream APIs are never hammered.
+
+## Quick start
+
+```bash
+git clone https://github.com/milanshaji1/market-pulse.git
+cd market-pulse
+npm install
+npm start          # → http://localhost:4000
+npm test           # run the 60-test suite
+```
+
+No API keys are required. Copy `.env.example` → `.env` to optionally add free Finnhub / FRED keys.
+
+## What it shows
+
+| Section | Content |
+| --- | --- |
+| **Macro strip** | S&P 500, Nasdaq, Dow, Russell 2000, VIX, 10Y yield, Gold, Oil, US Dollar |
+| **Opportunity Radar** | Top names ranked by a composite 0–100 momentum score (trend, RSI, volume surge, breakout proximity, returns) |
+| **Market Movers** | Top gainers / losers / most active across the tracked universe |
+| **Crypto** | Top 20 coins (24h/7d, sparklines), trending coins, global market cap & BTC dominance (CoinGecko) |
+| **Watchlist** | Add any ticker; saved in your browser (localStorage) |
+| **Market News** | Live headlines across Markets, S&P 500, Crypto, Earnings (Google News RSS) |
+| **Analysis view** | Click any row/card for a full breakdown: company summary, per-stock news, key data, and a **multi-horizon directional outlook** |
+
+## Analysis view (per stock)
+
+Click any ticker to open a detailed analysis with:
+
+- **Company summary** (Wikipedia) and **recent news for that specific stock** (Google News)
+- **Live interactive chart** embedded from **TradingView** (candles, volume, indicators)
+- **Directional outlook across 1W / 1M / 1Y / 5Y / 10Y toggles.** Each horizon shows a
+  Bullish → Bearish lean on a gauge, the confidence level, the exact signals feeding it,
+  and a plain-English rationale:
+  - **1W / 1M** — short-term technicals (price vs 20/50-day averages, RSI, MACD, momentum, volume)
+  - **1Y** — primary trend (50/200-day golden/death cross), 3–6 month momentum, valuation sanity
+  - **5Y / 10Y** — fundamentals: forward earnings & revenue growth, ROE, margins, leverage,
+    valuation, plus long-run price CAGR
+- **Key data**: RSI, 50/200-DMA, 6-mo return, 52w range, forward P/E, EPS/revenue growth,
+  ROE, and 1y/5y/10y price CAGR
+
+> The outlook is a **transparent, rules-based heuristic** — it always shows its inputs.
+> It is **not a forecast, prediction, or advice**. Long-horizon reads reflect business
+> quality and trend, not a price target. Nobody can reliably predict prices.
+
+## Conviction rating (1–5) & entry timing
+
+Every stock/ETF (and, lighter, every coin) gets a **1–5 conviction rating** blended from
+five transparent sub-scores — **trend, momentum, quality, valuation, risk** — with weights
+that adapt when fundamentals are absent (ETFs, indices, crypto). Ratings show on the
+Opportunity Radar cards and in the analysis view.
+
+Alongside it, an **entry-timing** read answers *"when do I buy?"* with concrete price levels:
+- **Buy zone (now)** — uptrend, not overbought, near rising support
+- **Wait · dip** — strong but stretched; wait for a pullback toward the 20/50-day average (level given)
+- **Wait · breakout** — coiled below resistance; wait for a close above $X (level given)
+- **Wait · confirm** — trend unclear; wait to reclaim the 50-day on volume
+- **Avoid** — downtrend below the 200-day; wait for a reclaim
+
+…each with an **invalidation** level and a timing note (event-driven vs. days/weeks, plus a
+dollar-cost-averaging suggestion for high-volatility names).
+
+## Signal alerts (browser notifications)
+
+Click the **bell** in the top bar and allow notifications. While the dashboard is open (a pinned
+tab is fine), it watches your **watchlist** every refresh and notifies you — once per condition
+per day — when a stock:
+
+- enters its **buy zone**,
+- pulls back into its **dip zone**,
+- crosses its **breakout trigger**, or
+- **reports earnings tomorrow**.
+
+Clicking a notification opens that stock's full analysis. (No server push — the tab must be open.)
+
+## Autopilot: two simulated strategies, head to head
+
+Both are **fully simulated** (fake money, no brokerage, cannot place a real order).
+They exist to answer one question honestly: *do these signals actually work?*
+
+**1. Breakout autopilot** (`lib/paper.js`) — follows the dashboard's own conviction +
+entry signals. $100k book, risk-selectable, stops, earnings-aware.
+
+**2. Momentum book (H1)** (`lib/momentum.js`) — a different strategy: rank every tracked
+stock by its **12-month return skipping the last month**, hold the **top 15 equal-weight**,
+rebalance every **28 days**, **no stops**. Trimming winners back to equal weight each month
+is part of the strategy, not churn.
+
+### What the evidence says so far
+
+| | Result |
+| --- | --- |
+| Breakout signals, backtested 3 ways | **Lost to SPY every time** (≈ −27pp; 28% win rate; profit factor < 1) |
+| 12-1 momentum, backtested (10yr, 3 universe slices) | Beat SPY in all three (25–33% CAGR vs 13.4%) |
+
+**Read the second row skeptically.** Those backtests are inflated by:
+- **survivorship** — the universe is *today's* index members, so companies that failed are invisible;
+- **hindsight in the universe** — an alphabetical slice happened to be semiconductor-heavy in the best semi decade ever (that slice alone showed 33% CAGR vs 25% for a neutral slice);
+- published long-only momentum earns **~15%/yr**. Anything far above that is bias, not alpha.
+
+That's why the momentum book runs **forward**: picks made before the outcome is known, no
+survivorship, no hindsight. It's the only honest test. Judge it in months, not days.
+
+Run a backtest yourself from the Autopilot section, or `npm test` for the 60-test suite
+(including the look-ahead guards that prove a decision at day *t* cannot see day *t+1*).
+
+## Catalyst & macro radar
+
+- **Macro & Policy Wire** — a live feed of tariff / Fed / chip-curb / crypto-policy / energy /
+  geopolitics headlines, each tagged by theme and bullish/bearish sentiment. (This is where a
+  *"Trump threatens tariffs"* headline shows up, tagged to the sectors most exposed.)
+- **Per-stock catalysts** — each name's recent headlines are classified by **type** (Earnings,
+  Analyst, Deal, Regulatory, Policy, Product) and **sentiment**, with an aggregate news tone.
+- **Macro exposure** — each stock is mapped to the macro themes it reacts to (e.g. semis →
+  chip curbs + tariffs, banks → the Fed, COIN/MSTR → crypto policy).
+- **Event-risk flag** — an unusual move on unusual volume gets flagged as likely news-driven.
+
+> This **contextualizes** headline-driven volatility — it does **not** predict how markets will
+> react to any future event. It flags exposure and tone, nothing more.
+
+## How it works
+
+- A small **Express** backend runs background refreshers that keep an in-memory
+  snapshot warm (stocks every 60s, crypto every 90s, news every 5m). The browser
+  polls `/api/dashboard` and always gets an instant response.
+- **Stocks / indices** come from Yahoo Finance's public chart endpoint
+  (server-to-server, no key). ~6 months of daily candles per symbol are used to
+  derive price, % change, RSI(14), 20/50-day SMAs, 1M/3M returns, volume surge
+  and the opportunity score.
+- **Crypto** comes from the free CoinGecko public API.
+- **News** comes from Google News RSS.
+
+No accounts, keys, or paid data feeds needed.
+
+## Run it
+
+```bash
+cd /Users/milanshaji/Stocks
+npm install
+npm start
+```
+
+Then open **http://localhost:4000**.
+
+Change the port with `PORT=8080 npm start`.
+
+## Getting the most up-to-date data
+
+Out of the box this uses free, key-free sources: **CNBC** (stocks/indices, effectively
+~real-time-to-15-min), **CoinGecko** (crypto, ~1 min), **Google News**, **Wikipedia**, and
+**embedded TradingView** live charts. That's plenty for monitoring, but if you want true
+tick-level real-time quotes in the *data* (not just the embedded chart), add a provider key:
+
+| Provider | Free tier | Best for |
+| --- | --- | --- |
+| **Finnhub** | Yes — real-time US stocks via WebSocket, company profiles, news, **analyst price targets & recommendations** | The single best free upgrade |
+| **Alpaca** | Yes (with free account) — real-time US market data API + WebSocket | Real-time quotes/bars |
+| **Polygon.io** | Yes (delayed); paid real-time | Deep historical + real-time |
+| **Twelve Data / Tiingo / Financial Modeling Prep** | Yes (rate-limited) | Fundamentals, forex, extra coverage |
+| Crypto: **Binance / Coinbase WebSocket** | Yes — truly real-time, no key | Live crypto ticks |
+
+**About TradingView specifically:** TradingView does **not** offer a public REST API to pull
+their quote data into your own app (their terms prohibit redistributing their feed). What they
+*do* offer — and what this dashboard already uses — is free **embeddable widgets** (the live
+chart in the analysis view). So "connecting to TradingView" = embedding their charts (done),
+not reading their data feed. For live *data* to drive the numbers/signals, use one of the APIs
+above (Finnhub recommended).
+
+### Unlock more accuracy (free, optional — no key required to run)
+
+The app reads optional keys from a `.env` file. Copy `.env.example` → `.env`, paste any key(s),
+and restart. Nothing breaks without them.
+
+```bash
+cp .env.example .env      # then edit .env and paste your key(s)
+```
+
+- **`FINNHUB_API_KEY`** (biggest win) — real **analyst consensus** (buy/hold/sell counts, folded
+  into the 1–5 conviction rating at ~20% weight) plus **upcoming earnings dates**: cards get a
+  📅 badge, and the entry plan warns when a report is ≤14 days away (binary event risk).
+  Free key: <https://finnhub.io/register>
+- **`FRED_API_KEY`** — real US macro series (Fed funds, 10Y, 10Y–2Y spread, CPI, core CPI,
+  unemployment) shown as a live indicator strip above the Macro & Policy Wire. Free: St. Louis Fed.
+- **`COINGECKO_DEMO_KEY`** — higher crypto rate limits / fresher updates. Free.
+
+The startup log and `/api/health` show whether a key is active, so you can confirm it loaded.
+
+## Customize
+
+- **Track more tickers** → edit `lib/universe.js` (`NAMES` map). Everything you
+  add is scanned for movers and the Opportunity Radar. Mind Yahoo's rate limits
+  if you add hundreds.
+- **Tune the opportunity score** → `lib/indicators.js` (`opportunityScore`).
+- **Refresh cadence** → constants at the top of `server.js`.
+
+## ⚠️ Disclaimer
+
+Data is delayed (typically ~15 min) and provided as-is. The Opportunity Radar
+score is an automated **momentum heuristic**, not investment advice, a
+recommendation, or a prediction. Markets are risky — do your own research.
+
+## Project layout
+
+```
+server.js            Express app + background refreshers + API
+lib/universe.js      Tracked symbols & names
+lib/yahoo.js         Yahoo Finance provider + per-symbol metrics
+lib/crypto.js        CoinGecko provider
+lib/news.js          Google News RSS provider
+lib/indicators.js    RSI / SMA / returns + opportunity score
+public/              Frontend (index.html, styles.css, app.js)
+```

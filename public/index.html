@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Market Pulse — Live Market Terminal</title>
+  <!-- PWA / add-to-home-screen -->
+  <meta name="theme-color" content="#0c0b0e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Market Pulse" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icon-180.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230c0b0e'/><path d='M12 60 L34 60 L42 34 L54 74 L62 52 L70 52' fill='none' stroke='%23ffb23e' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+</head>
+<body>
+  <div class="app">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 40 40" fill="none"><path d="M4 24 L14 24 L18 11 L25 31 L29 20 L36 20" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">MARKET<span class="brand-accent">PULSE</span></span>
+          <span class="brand-sub">Live market terminal</span>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <a class="nav-item active" data-section="overview" href="#overview"><span class="nav-key">01</span><span class="nav-label">Overview</span></a>
+        <a class="nav-item" data-section="opportunities" href="#opportunities"><span class="nav-key">02</span><span class="nav-label">Opportunities</span></a>
+        <a class="nav-item" data-section="movers" href="#movers"><span class="nav-key">03</span><span class="nav-label">Movers</span></a>
+        <a class="nav-item" data-section="crypto" href="#crypto"><span class="nav-key">04</span><span class="nav-label">Crypto</span></a>
+        <a class="nav-item" data-section="watchlist" href="#watchlist"><span class="nav-key">05</span><span class="nav-label">Watchlist</span></a>
+        <a class="nav-item" data-section="news" href="#news"><span class="nav-key">06</span><span class="nav-label">News</span></a>
+        <a class="nav-item" data-section="autopilot" href="#autopilot"><span class="nav-key">07</span><span class="nav-label">Autopilot</span></a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="status-card">
+          <span class="dot" id="conn-dot"></span>
+          <div>
+            <div class="status-main" id="market-state">—</div>
+            <div class="status-sub" id="last-updated">connecting…</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="main">
+      <!-- running ticker tape -->
+      <div class="tape" id="tape"><div class="tape-track" id="tape-track"></div></div>
+
+      <header class="topbar">
+        <button class="icon-btn menu-toggle" id="menu-toggle" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
+
+        <form class="search" id="search-form" autocomplete="off">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
+          <input id="search-input" placeholder="Look up any ticker: AAPL, NVDA, TSLA" maxlength="12" />
+          <kbd>/</kbd>
+        </form>
+
+        <div class="topbar-right">
+          <button class="icon-btn" id="alerts-toggle" title="Signal alerts: notify me when a watchlist stock hits its buy zone, breakout trigger, or has earnings tomorrow (works while the dashboard is open)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          </button>
+          <select id="refresh-interval" aria-label="Refresh cadence">
+            <option value="10000">10s</option>
+            <option value="30000" selected>30s</option>
+            <option value="60000">60s</option>
+            <option value="120000">2m</option>
+          </select>
+          <button class="icon-btn refresh-btn" id="refresh-now" title="Refresh now">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+            <span id="countdown">30</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- ===== Overview / oscilloscope hero ===== -->
+        <section id="overview" class="view-block">
+          <div class="hero">
+            <div class="hero-readout">
+              <span class="eyebrow">Live market pulse</span>
+              <div class="hero-index">
+                <span class="hero-name" id="hero-name">S&amp;P 500</span>
+                <span class="hero-price num" id="hero-price">—</span>
+                <span class="hero-change num" id="hero-change"></span>
+              </div>
+              <div class="breadth" id="breadth"></div>
+            </div>
+            <div class="hero-scope" id="pulse"></div>
+          </div>
+          <div class="strip" id="indices-strip">
+            <div class="idx-card skel"></div><div class="idx-card skel"></div><div class="idx-card skel"></div>
+            <div class="idx-card skel"></div><div class="idx-card skel"></div><div class="idx-card skel"></div>
+          </div>
+        </section>
+
+        <!-- ===== Opportunity Radar ===== -->
+        <section id="opportunities" class="view-block">
+          <div class="panel featured">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Signal</span><h2>Opportunity Radar</h2><span class="count" id="opp-count"></span></div>
+              <span class="hint">Ranked by momentum score: trend · RSI · volume · breakout</span>
+            </div>
+            <div class="opp-grid" id="opportunity-grid">
+              <div class="opp-card skel"></div><div class="opp-card skel"></div><div class="opp-card skel"></div><div class="opp-card skel"></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="columns">
+          <!-- ===== Movers ===== -->
+          <section id="movers" class="view-block">
+            <div class="panel">
+              <div class="panel-head">
+                <div class="panel-title"><span class="eyebrow">Tape</span><h2>Movers</h2></div>
+                <div class="tabs" id="mover-tabs">
+                  <button class="tab active" data-tab="gainers">Gainers</button>
+                  <button class="tab" data-tab="losers">Losers</button>
+                  <button class="tab" data-tab="mostActive">Active</button>
+                </div>
+              </div>
+              <div class="table-wrap"><table id="movers-table" class="ticker-table"></table></div>
+            </div>
+          </section>
+
+          <!-- ===== Crypto ===== -->
+          <section id="crypto" class="view-block">
+            <div class="panel">
+              <div class="panel-head">
+                <div class="panel-title"><span class="eyebrow">Digital</span><h2>Crypto</h2></div>
+                <span class="hint" id="crypto-global"></span>
+              </div>
+              <div class="chips" id="crypto-trending"></div>
+              <div class="table-wrap"><table id="crypto-table" class="ticker-table"></table></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ===== Watchlist ===== -->
+        <section id="watchlist" class="view-block">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Yours</span><h2>Watchlist</h2></div>
+              <form class="add-form" id="add-form" autocomplete="off">
+                <input id="add-input" placeholder="Add ticker" maxlength="12" />
+                <button type="submit">Add</button>
+              </form>
+            </div>
+            <div class="table-wrap"><table id="watchlist-table" class="ticker-table"></table></div>
+            <p class="empty-note" id="watchlist-empty">Track any ticker here. Saved in your browser.</p>
+          </div>
+        </section>
+
+        <!-- ===== News ===== -->
+        <section id="news" class="view-block">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Policy</span><h2>Macro &amp; Policy Wire</h2></div>
+              <span class="hint">Tariffs · Fed · chip curbs · crypto policy · energy · geopolitics</span>
+            </div>
+            <div class="econ-strip" id="econ-strip"></div>
+            <ul class="news-list macro-list" id="macro-list"></ul>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Wire</span><h2>Market News</h2></div>
+              <span class="hint" id="news-updated"></span>
+            </div>
+            <ul class="news-list" id="news-list"></ul>
+          </div>
+        </section>
+
+        <!-- ===== Paper-trading autopilot (SIMULATED) ===== -->
+        <section id="autopilot" class="view-block">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Sim</span><h2>Autopilot</h2><span class="sim-badge">SIMULATED · FAKE MONEY</span></div>
+              <div class="paper-controls">
+                <select id="paper-risk" aria-label="Risk level">
+                  <option value="low">Low risk</option>
+                  <option value="medium">Medium risk</option>
+                  <option value="high">High risk</option>
+                </select>
+                <button id="paper-reset" class="danger-btn" title="Wipe the simulated book and start fresh">Reset book</button>
+              </div>
+            </div>
+            <p class="paper-note">Follows the dashboard's own signals with a $100k simulated portfolio, so the system builds a track record you can judge before risking anything real. No brokerage connection; it can never place real trades. Only evaluates while the app is running.</p>
+            <div class="m-stats" id="paper-stats"></div>
+            <div class="an-section-label">Equity curve <span class="hint" id="paper-curve-hint"></span></div>
+            <div class="paper-chart" id="paper-chart"></div>
+            <div class="an-section-label">Open positions</div>
+            <div class="table-wrap"><table id="paper-positions" class="ticker-table"></table></div>
+            <p class="empty-note" id="paper-pos-empty" style="display:none">No open positions. The autopilot is waiting for qualifying setups.</p>
+            <div class="an-section-label">Trade history</div>
+            <div class="table-wrap"><table id="paper-trades" class="ticker-table"></table></div>
+            <p class="empty-note" id="paper-trades-empty" style="display:none">No closed trades yet.</p>
+
+            <div class="an-section-label">Backtest <span class="hint">: same rules, replayed over ~2 years of real history</span></div>
+            <p class="paper-note">Answers "would these signals have worked?" without waiting months. Technical signals only: historical fundamentals and analyst ratings aren't available, and using today's on old prices would be cheating. Compared against simply buying SPY and holding. If it cannot beat that, the signals are not earning their keep.</p>
+            <button id="backtest-run" class="run-btn">Run backtest</button>
+            <div id="backtest-out"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">H1</span><h2>Momentum book</h2><span class="sim-badge">SIMULATED · FAKE MONEY</span></div>
+              <button id="momentum-reset" class="danger-btn" title="Wipe the momentum book and start fresh">Reset book</button>
+            </div>
+            <p class="paper-note">A second, independent strategy running head-to-head with the breakout autopilot above: rank every tracked stock by its 12-month return (skipping the last month), hold the top 15 equal-weight, rebalance every 28 days, with <strong>no stops</strong>. Backtests said this has an edge, but they were inflated by survivorship and hindsight. This is the honest test: picks made before the outcome is known. Judge it in months, not days.</p>
+            <div class="m-stats" id="momentum-stats"></div>
+            <div id="momentum-chart-wrap" style="display:none">
+              <div class="an-section-label">Equity curve</div>
+              <div class="paper-chart" id="momentum-chart"></div>
+            </div>
+            <div class="an-section-label">Holdings <span class="hint" id="momentum-next"></span></div>
+            <div class="table-wrap"><table id="momentum-positions" class="ticker-table"></table></div>
+            <p class="empty-note" id="momentum-empty" style="display:none">No holdings yet. The first ranking runs shortly after launch.</p>
+          </div>
+        </section>
+
+        <footer class="disclaimer">
+          Feeds — CNBC · CoinGecko · Wikipedia · Google News, delayed up to ~15 min. Charts by TradingView.
+          Opportunity Radar and horizon outlooks are automated heuristics, <strong>not financial advice</strong>. Do your own research.
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal">
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
