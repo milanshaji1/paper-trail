@@ -1,6 +1,6 @@
 // Tests for the cross-sectional momentum engine (H1), written BEFORE the impl.
-// Same load-bearing guard as the other backtester: a decision at time t must be
-// provably blind to t+1 — and here also blind to the skipped recent month.
+// Same critical guard as the other backtester: a decision at time t must be
+// provably blind to t+1, and here also blind to the skipped recent month.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 

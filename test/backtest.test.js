@@ -1,5 +1,5 @@
 // Tests for the historical backtest engine (written BEFORE the implementation).
-// The load-bearing test here is the look-ahead guard: a decision made on day t
+// The test that matters most here is the look-ahead guard: a decision on day t
 // must be provably unable to see day t+1. Every other number is worthless if
 // that one fails.
 import { test } from "node:test";

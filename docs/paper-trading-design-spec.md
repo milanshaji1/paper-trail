@@ -1,4 +1,4 @@
-# Paper Trading Autopilot — Design Spec
+# Paper trading autopilot: design spec
 
 **Date:** 2026-07-03 · **Status:** Approved by user (high-risk default, stocks + crypto, $100k)
 
@@ -17,7 +17,7 @@ record (win rate, P&L, drawdown) before any real money is considered.
 - Engine hook: after each stock ranking pass and each crypto refresh, the server calls
   `engine.evaluate({ stocks, crypto, now })`.
 - Rejected: browser-side (only trades with a tab open; Mac/phone diverge) and
-  signal-log-only (no P&L/sizing — weaker validation).
+  signal-log-only (no P&L/sizing, so weaker validation).
 
 ## Portfolio rules
 
