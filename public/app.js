@@ -1,4 +1,4 @@
-/* Market Pulse — frontend controller. Vanilla JS, no build step. */
+/* PaperTrail — frontend controller. Vanilla JS, no build step. */
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls, html) => {
@@ -128,7 +128,7 @@ async function toggleAlerts() {
       return;
     }
     alerts.enabled = true;
-    new Notification("Market Pulse — alerts on", {
+    new Notification("PaperTrail — alerts on", {
       body: "You'll be notified when a watchlist stock hits its buy zone, breakout trigger, or reports earnings tomorrow. Keep this tab open.",
       icon: "/icon-192.png",
     });

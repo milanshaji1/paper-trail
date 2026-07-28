@@ -1,5 +1,5 @@
 {
-  "name": "market-pulse-dashboard",
+  "name": "paper-trail-dashboard",
   "version": "1.0.0",
   "description": "Auto-updating dashboard tracking stocks, S&P 500, indices, crypto, movers, opportunity signals and market news.",
   "type": "module",

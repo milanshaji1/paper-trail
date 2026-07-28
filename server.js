@@ -1,4 +1,4 @@
-// Market Pulse — backend.
+// PaperTrail — backend.
 // Background refreshers keep an in-memory snapshot warm so the browser always
 // gets an instant response and we stay gentle with the upstream APIs.
 //
@@ -600,7 +600,7 @@ function lanUrls(port) {
 
 // Bind to 0.0.0.0 so other devices on the network (your phone) can reach it.
 const server = app.listen(PORT, "0.0.0.0", async () => {
-  console.log("\n  \x1b[33m▁▂▃▅▂▇\x1b[0m  MARKET PULSE is live\n");
+  console.log("\n  \x1b[33m▁▂▃▅▂▇\x1b[0m  PAPERTRAIL is live\n");
   console.log(`  On this Mac:   http://localhost:${PORT}`);
   const lan = lanUrls(PORT);
   if (lan.length) {
@@ -637,7 +637,7 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 // Friendly message instead of a stack trace if the port is taken.
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
-    console.error(`\n  Market Pulse may already be running — port ${PORT} is in use.`);
+    console.error(`\n  PaperTrail may already be running — port ${PORT} is in use.`);
     console.error(`  • Just open http://localhost:${PORT} in your browser, or`);
     console.error(`  • Free the port and relaunch:  lsof -ti tcp:${PORT} | xargs kill\n`);
     process.exit(1);

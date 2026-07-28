@@ -1,4 +1,4 @@
-# Market Pulse: live market dashboard and self-validating trading engine
+# PaperTrail — Live Stock Screener & Backtesting Engine
 
 A self-hosted market terminal that screens ~1,550 US stocks and the top 50 crypto every
 60 seconds, rates each name 1–5 from transparent sub-scores, and computes concrete
@@ -10,7 +10,7 @@ signals, so you can see whether they work before risking a cent.
 ![deps](https://img.shields.io/badge/runtime%20deps-1%20(express)-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
-![Market Pulse dashboard](docs/screenshot.png)
+![PaperTrail dashboard](docs/screenshot.png)
 
 ## Does the score actually work?
 
@@ -47,8 +47,8 @@ the ways a backtest lies to the person who wrote it.
 ## Quick start
 
 ```bash
-git clone https://github.com/milanshaji1/market-pulse.git
-cd market-pulse
+git clone https://github.com/milanshaji1/paper-trail.git
+cd paper-trail
 npm install
 npm start          # → http://localhost:4000
 npm test           # run the 60-test suite

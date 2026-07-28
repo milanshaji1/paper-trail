@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validate Market Pulse's own signals by running a **fully simulated** portfolio that
+Validate PaperTrail's own signals by running a **fully simulated** portfolio that
 auto-follows the app's conviction ratings and entry plans. Produces a real track
 record (win rate, P&L, drawdown) before any real money is considered.
 **No brokerage connection exists or will exist. Fake money only.**

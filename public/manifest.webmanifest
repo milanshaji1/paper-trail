@@ -1,6 +1,6 @@
 {
-  "name": "Market Pulse",
-  "short_name": "Market Pulse",
+  "name": "PaperTrail",
+  "short_name": "PaperTrail",
   "description": "Live market terminal — stocks, S&P, crypto, movers, opportunity radar and multi-horizon outlooks.",
   "start_url": "/",
   "scope": "/",

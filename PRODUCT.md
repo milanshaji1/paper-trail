@@ -14,7 +14,7 @@ One user: the owner, a self-directed retail investor in Australia. He checks it 
 
 ## Product Purpose
 
-Market Pulse scans ~1,552 US-listed stocks (S&P 1500 + ADRs + momentum names) and the top 50 crypto every 60 seconds, then does three things a screener usually doesn't: rates each name 1–5 on transparent sub-scores (trend, momentum, quality, value, risk, real analyst consensus), computes a concrete **entry plan** with real price levels and a stated reason, and runs a simulated autopilot that trades its own signals so the system accumulates an honest track record.
+PaperTrail scans ~1,552 US-listed stocks (S&P 1500 + ADRs + momentum names) and the top 50 crypto every 60 seconds, then does three things a screener usually doesn't: rates each name 1–5 on transparent sub-scores (trend, momentum, quality, value, risk, real analyst consensus), computes a concrete **entry plan** with real price levels and a stated reason, and runs a simulated autopilot that trades its own signals so the system accumulates an honest track record.
 
 Success is the user making better-informed decisions with less time, and being able to answer *"are these signals actually any good?"* from evidence.
 

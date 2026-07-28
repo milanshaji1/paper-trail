@@ -1,5 +1,5 @@
 #!/bin/bash
-# Double-click this file to launch the Market Pulse dashboard.
+# Double-click this file to launch the PaperTrail dashboard.
 # It starts the local server and opens the dashboard in your browser.
 # Leave this Terminal window open while you use it; close it (or press Ctrl+C) to stop.
 
@@ -14,7 +14,7 @@ if [ -n "$EXISTING" ]; then
   sleep 1
 fi
 
-echo "Starting Market Pulse…"
+echo "Starting PaperTrail…"
 # Open the browser a moment after the server boots.
 ( sleep 2 && open "http://localhost:4000" ) &
 
