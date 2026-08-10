@@ -18,7 +18,7 @@ import { PaperEngine, RISK_PROFILES } from "./lib/paper.js";
 import { runBacktest } from "./lib/backtest.js";
 import { MomentumEngine, formationReturn } from "./lib/momentum.js";
 
-import { INDICES, EQUITIES, ALL_STOCK_SYMBOLS, normalizeSymbol, displayName, registerSymbols } from "./lib/universe.js";
+import { INDICES, EQUITIES, ALL_STOCK_SYMBOLS, normalizeSymbol, displayName, registerSymbols, currencyOf, isForeign } from "./lib/universe.js";
 import { fetchScanUniverse } from "./lib/sp500.js";
 import {
   fetchQuotes, fetchSingleQuote, fetchChart, fetchEnrichment,
@@ -29,6 +29,7 @@ import { fetchNews, fetchSymbolNews, fetchMacroNews } from "./lib/news.js";
 import { themesForSymbol, newsSentiment, eventRisk } from "./lib/catalysts.js";
 import { fetchProfile } from "./lib/profile.js";
 import { computeOutlook } from "./lib/outlook.js";
+import { fetchDjtFeed, fetchMemeFeed } from "./lib/djt/feed.js";
 import { computeConviction, computeEntry } from "./lib/conviction.js";
 import { sma, rsi, macd, returnPct, cagrFromPoints } from "./lib/indicators.js";
 
@@ -98,11 +99,34 @@ function markMomentum() {
   if (Object.keys(prices).length) momentum.mark(prices, Date.now());
 }
 
+// Spot FX for the non-USD listings the book holds. Quoted as USD per 1 unit of
+// the foreign currency, so multiplying a local price by it yields USD.
+const fxRates = { USD: 1 };
+const FX_SYMBOLS = { AUD: "AUD=" };
+
+async function refreshFx() {
+  try {
+    const wanted = Object.entries(FX_SYMBOLS);
+    const qs = await fetchQuotes(wanted.map(([, sym]) => sym));
+    const bySym = new Map(qs.map((q) => [q.symbol, q]));
+    for (const [ccy, sym] of wanted) {
+      const p = bySym.get(sym)?.price;
+      if (p > 0) fxRates[ccy] = p;
+    }
+    log(`fx: ${Object.entries(fxRates).filter(([c]) => c !== "USD").map(([c, r]) => `${c}=${r}`).join(" ") || "none"}`);
+  } catch (err) {
+    // Keep the last known rate rather than reverting to 1, which would
+    // silently revalue every foreign position by ~40%.
+    log(`fx refresh failed: ${err.message}`);
+  }
+}
+
 function runPaperCycle() {
   try {
     const actions = paper.evaluate({
       stocks: store.stocks.quotes,
       crypto: store.crypto.top || [],
+      fx: fxRates,
       now: Date.now(),
     });
     for (const a of actions) {
@@ -147,7 +171,9 @@ const store = {
   news: { updatedAt: null, items: [] },
   macro: { updatedAt: null, items: [] },
   econ: { updatedAt: null, indicators: [] }, // FRED series (needs FRED_API_KEY)
-  status: { stocks: "pending", crypto: "pending", news: "pending" },
+  djt: { updatedAt: null, origin: null, alerts: [], stats: {} },
+  meme: { updatedAt: null, origin: null, candidates: [], rejected: [], stats: {} },
+  status: { stocks: "pending", crypto: "pending", news: "pending", djt: "pending", meme: "pending" },
 };
 
 function log(msg) {
@@ -155,6 +181,7 @@ function log(msg) {
 }
 
 function applyEnrichment(quote) {
+  quote.currency = currencyOf(quote.symbol);
   const e = enrichCache.get(quote.symbol);
   if (!e) return quote;
   Object.assign(quote, {
@@ -359,6 +386,28 @@ async function refreshNews() {
   }
 }
 
+// Watcher output. Published by scripts/djt-watch.js + scripts/meme-watch.js,
+// either locally or by the GitHub Actions run; we only read it.
+async function refreshWatchers() {
+  const [djt, meme] = await Promise.allSettled([fetchDjtFeed(), fetchMemeFeed()]);
+  if (djt.status === "fulfilled") {
+    store.djt = djt.value;
+    store.status.djt = djt.value.origin === "absent" ? "degraded" : "ok";
+    log(`djt feed: ${djt.value.alerts.length} alerts (${djt.value.origin})`);
+  } else {
+    store.status.djt = "error";
+    log(`djt feed failed: ${djt.reason.message}`);
+  }
+  if (meme.status === "fulfilled") {
+    store.meme = meme.value;
+    store.status.meme = meme.value.origin === "absent" ? "degraded" : "ok";
+    log(`meme feed: ${meme.value.candidates.length} candidates (${meme.value.origin})`);
+  } else {
+    store.status.meme = "error";
+    log(`meme feed failed: ${meme.reason.message}`);
+  }
+}
+
 function schedule(fn, interval, delay = 0) {
   setTimeout(() => { fn(); setInterval(fn, interval); }, delay);
 }
@@ -382,10 +431,15 @@ app.get("/api/dashboard", (_req, res) => {
     news: store.news,
     macro: store.macro,
     econ: store.econ,
+    djt: store.djt,
+    meme: store.meme,
     paper: paper.summary(),
     momentum: momentum.summary(),
   });
 });
+
+app.get("/api/djt", (_req, res) => res.json(store.djt));
+app.get("/api/meme", (_req, res) => res.json(store.meme));
 
 // H1 forward book (simulated).
 app.get("/api/momentum", (_req, res) => res.json(momentum.summary()));
@@ -438,6 +492,36 @@ app.post("/api/backtest", express.json(), async (req, res) => {
 
 // Paper-trading autopilot (simulated). Full state, and reset with a risk level.
 app.get("/api/paper", (_req, res) => res.json(paper.summary()));
+
+// Open a pinned manual position. Simulated money only — same book, same rules
+// for marking, but exempt from the engine's entry and exit logic.
+app.post("/api/paper/position", express.json(), async (req, res) => {
+  const { symbol, amount, note } = req.body || {};
+  const sym = normalizeSymbol(symbol || "");
+  if (!sym) return res.status(400).json({ ok: false, reason: "symbol required" });
+
+  const held = store.stocks.quotes.find((q) => q.symbol === sym);
+  let price = held?.price;
+  if (price == null) {
+    // Not in the cached scan yet — fetch it directly rather than refuse.
+    const [q] = await fetchQuotes([sym]).catch(() => []);
+    price = q?.price;
+  }
+  if (price == null) return res.status(404).json({ ok: false, reason: `no price for ${sym}` });
+
+  const currency = currencyOf(sym);
+  const fxRate = fxRates[currency];
+  if (currency !== "USD" && !(fxRate > 0)) {
+    return res.status(503).json({ ok: false, reason: `no ${currency}/USD rate available yet — try again shortly` });
+  }
+  const r = paper.openManual({
+    symbol: sym, name: displayName(sym), price, notional: Number(amount), note,
+    currency, fxRate: fxRate ?? 1,
+  });
+  if (!r.ok) return res.status(400).json(r);
+  log(`paper[SIM] manual open ${sym} $${Number(amount).toFixed(2)} @ ${price}`);
+  res.json(r);
+});
 app.post("/api/paper/reset", express.json(), (req, res) => {
   const risk = req.body?.risk;
   if (risk != null && !RISK_PROFILES[risk]) {
@@ -621,6 +705,8 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
   console.log(`  Analyst data:  ${hasFinnhub() ? "\x1b[32mFinnhub key active ✓ (analyst consensus + earnings dates)\x1b[0m" : "\x1b[2mno key (add FINNHUB_API_KEY to .env for analyst consensus)\x1b[0m"}`);
   console.log(`  Macro data:    ${hasFred() ? "\x1b[32mFRED key active ✓ (rates, CPI, yield curve)\x1b[0m" : "\x1b[2mno key (add FRED_API_KEY to .env for real macro series)\x1b[0m"}`);
   console.log("");
+  // FX first and often — the paper book cannot mark foreign holdings without it.
+  schedule(refreshFx, 10 * 60_000, 0);
   schedule(refreshStocks, STOCK_INTERVAL, 0);
   schedule(refreshEnrichment, ENRICH_INTERVAL, 4000);
   schedule(refreshCrypto, CRYPTO_INTERVAL, 500);
@@ -632,6 +718,7 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
   if (hasFred()) schedule(refreshEcon, 60 * 60_000, 2_000);
   // Self-gates on isDue(); the actual rebalance only fires every 28 days.
   schedule(refreshMomentum, 6 * 60 * 60_000, 60_000);
+  schedule(refreshWatchers, 5 * 60_000, 2_500);
 });
 
 // Friendly message instead of a stack trace if the port is taken.

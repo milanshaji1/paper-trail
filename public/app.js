@@ -216,6 +216,232 @@ function render() {
   renderNews(d.news);
   renderPaper(d.paper);
   renderMomentum(d.momentum);
+  renderDjt(d.djt);
+  renderMeme(d.meme);
+  renderBook(d.meme?.book);
+}
+
+/* ---------- DJT Watch ----------
+ *
+ * Everything rendered below originates outside this app: memecoin names come
+ * from whoever launched the token, and the safety fields come from third-party
+ * APIs. None of it is trusted, so every interpolation goes through one of
+ * escHtml / num / cssToken / safeUrl. Interpolating a value raw because it
+ * "should be a number" is exactly how the first version was XSS-able.
+ */
+const escHtml = (s = "") =>
+  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+// Numeric fields are coerced, never trusted. Non-numbers render as a dash.
+const num = (v, fallback = "—") => (Number.isFinite(Number(v)) && v !== null && v !== "" ? String(Number(v)) : fallback);
+
+// Class-name position: allow only the shape we actually emit.
+const cssToken = (v) => (/^[a-z0-9_-]+$/i.test(String(v ?? "")) ? String(v) : "unknown");
+
+// href position: escaping alone does not stop `javascript:` — check the scheme.
+const safeUrl = (u) => {
+  try {
+    const parsed = new URL(String(u), window.location.origin);
+    return ["http:", "https:"].includes(parsed.protocol) ? escHtml(parsed.href) : "";
+  } catch {
+    return "";
+  }
+};
+
+const tickerChips = (syms, tone) =>
+  (syms || []).map((s) => `<span class="tkr ${cssToken(tone)}">${escHtml(s)}</span>`).join("");
+
+function renderDjt(djt) {
+  if (!djt) return;
+  const upd = $("#djt-updated");
+  if (upd) {
+    upd.textContent = djt.updatedAt
+      ? `updated ${ago(djt.updatedAt)} · ${djt.origin === "github" ? "cloud watcher" : djt.origin}`
+      : "watcher has not run yet";
+  }
+
+  const st = djt.stats || {};
+  const stats = $("#djt-stats");
+  if (stats) {
+    stats.innerHTML = `
+      <div class="m-stat"><div class="k">Alerts stored</div><div class="v">${(djt.alerts || []).length}</div></div>
+      <div class="m-stat"><div class="k">Last run</div><div class="v">${djt.updatedAt ? ago(djt.updatedAt) : "—"}</div></div>
+      <div class="m-stat"><div class="k">New last cycle</div><div class="v">${st.lastNew ?? "—"}</div></div>
+      <div class="m-stat"><div class="k">Telegram</div><div class="v">${st.telegram === "configured" ? "on" : "off"}</div></div>`;
+  }
+
+  const ul = $("#djt-list");
+  const empty = $("#djt-empty");
+  if (!ul) return;
+  ul.innerHTML = "";
+  const items = djt.alerts || [];
+  if (empty) empty.style.display = items.length ? "none" : "";
+
+  for (const a of items.slice(0, 40)) {
+    const c = a.components || {};
+    const href = safeUrl(a.url);
+    const li = el("li", `djt-item band-${cssToken(a.band)}`);
+    li.innerHTML = `
+      <div class="djt-top">
+        <span class="djt-score band-${cssToken(a.band)}">${num(a.score, "?")}</span>
+        <span class="djt-src">${escHtml(a.sourceLabel || "")}</span>
+        <span class="djt-session">${escHtml(a.session || "")}</span>
+        <span class="djt-when">${escHtml(ago(a.ts))}</span>
+      </div>
+      <p class="djt-text">${escHtml(String(a.text || "").slice(0, 420))}</p>
+      <div class="djt-tickers">
+        ${a.named?.length ? `<span class="djt-lbl">named</span>${tickerChips(a.named, "named")}` : ""}
+        ${a.bullish?.length ? `<span class="djt-lbl">helps</span>${tickerChips(a.bullish, "up-chip")}` : ""}
+        ${a.bearish?.length ? `<span class="djt-lbl">hurts</span>${tickerChips(a.bearish, "down-chip")}` : ""}
+      </div>
+      <div class="djt-why">
+        <span class="djt-comp" title="mechanism · entities · modality · specificity · novelty">${num(c.mechanism, 0)}·${num(c.entities, 0)}·${num(c.modality, 0)}·${num(c.specificity, 0)}·${num(c.novelty, 0)}</span>
+        ${escHtml((a.why || []).join(" · "))}
+        ${href ? ` <a href="${href}" target="_blank" rel="noopener noreferrer">source</a>` : ""}
+      </div>`;
+    ul.appendChild(li);
+  }
+}
+
+/* ---------- Meme Radar ---------- */
+function renderMeme(meme) {
+  if (!meme) return;
+  const upd = $("#meme-updated");
+  if (upd) {
+    upd.textContent = meme.updatedAt
+      ? `updated ${ago(meme.updatedAt)} · ${meme.origin === "github" ? "cloud watcher" : meme.origin}`
+      : "radar has not run yet";
+  }
+
+  const st = meme.stats || {};
+  const stats = $("#meme-stats");
+  if (stats) {
+    stats.innerHTML = `
+      <div class="m-stat"><div class="k">Pools scanned</div><div class="v">${st.pools ?? "—"}</div></div>
+      <div class="m-stat"><div class="k">Cleared gate</div><div class="v">${st.passedSafety ?? 0}</div></div>
+      <div class="m-stat"><div class="k">Rejected</div><div class="v">${st.rejectedSafety ?? 0}</div></div>
+      <div class="m-stat"><div class="k">Alerted</div><div class="v">${st.alerted ?? 0}</div></div>`;
+  }
+
+  const ul = $("#meme-list");
+  const empty = $("#meme-empty");
+  if (ul) {
+    ul.innerHTML = "";
+    const items = meme.candidates || [];
+    if (empty) empty.style.display = items.length ? "none" : "";
+    for (const c of items.slice(0, 30)) {
+      const m = c.metrics || {};
+      const s = c.safety || {};
+      const href = safeUrl(c.url);
+      const li = el("li", `meme-item band-${cssToken(c.band)}`);
+      li.innerHTML = `
+        <div class="meme-top">
+          <span class="djt-score band-${cssToken(c.band)}">${num(c.score, "?")}</span>
+          <span class="meme-sym">${escHtml(c.symbol || "?")}</span>
+          <span class="meme-net">${escHtml(c.network)} · ${escHtml(c.dex || "")}</span>
+          <span class="djt-when">${m.ageHours != null ? `${num(m.ageHours)}h old` : ""}</span>
+        </div>
+        <div class="meme-metrics">
+          <span>liq <b>$${escHtml(fmtCompact(Number(c.liquidityUsd)))}</b></span>
+          <span>fdv <b>$${escHtml(fmtCompact(Number(c.fdvUsd)))}</b></span>
+          <span>vol 1h <b>$${escHtml(fmtCompact(Number(c.volumeH1)))}</b></span>
+          <span>15m accel <b>${num(m.accel15m)}×</b></span>
+          <span>buyers <b>${num(m.buyerAccel5m)}×</b></span>
+          <span>buy ratio <b>${Number.isFinite(Number(m.buyRatio5m)) ? Math.round(Number(m.buyRatio5m) * 100) + "%" : "—"}</b></span>
+        </div>
+        <div class="meme-safety">
+          <span class="ok-chip">gate passed</span>
+          <span>${escHtml(s.provider || "?")}</span>
+          <span>holders <b>${num(s.holders, "?")}</b></span>
+          <span>top10 <b>${num(s.top10Pct, "?")}%</b></span>
+          <span>mint <b>${s.mintAuthority ? "LIVE" : "renounced"}</b></span>
+          <span>freeze <b>${s.freezeAuthority ? "LIVE" : "renounced"}</b></span>
+        </div>
+        ${(c.flags || []).length ? `<div class="meme-flags">⚠ ${escHtml(c.flags.join(" · "))}</div>` : ""}
+        <div class="djt-why">${escHtml((c.why || []).join(" · "))}${href ? ` <a href="${href}" target="_blank" rel="noopener noreferrer">chart</a>` : ""}</div>`;
+      ul.appendChild(li);
+    }
+  }
+
+  // The rejection log is the audit trail for the gate. If it is always empty,
+  // the gate is not doing anything.
+  const rej = $("#meme-rejects");
+  if (rej) {
+    rej.innerHTML = "";
+    for (const r of (meme.rejected || []).slice(0, 25)) {
+      const li = el("li", "meme-reject");
+      li.innerHTML = `<span class="meme-sym">${escHtml(r.symbol || "?")}</span>
+        <span class="rej-score">${num(r.score, "?")}</span>
+        <span class="rej-why">${escHtml((r.reasons || []).join(" · "))}</span>`;
+      rej.appendChild(li);
+    }
+  }
+}
+
+/* ---------- Radar scorecard (SIMULATED) ---------- */
+function renderBook(book) {
+  const note = $("#book-note");
+  const rules = $("#book-rules");
+  const openUl = $("#book-open");
+  const closedUl = $("#book-closed");
+  const stats = $("#book-stats");
+  if (!openUl || !closedUl) return;
+
+  openUl.innerHTML = "";
+  closedUl.innerHTML = "";
+  stats.innerHTML = "";
+
+  if (!book) {
+    note.style.display = "";
+    note.textContent = "No simulated trades yet — the scorecard fills in once the radar alerts on something.";
+    return;
+  }
+
+  const r = book.rules || {};
+  rules.textContent = `+${num(r.targetPct)}% target · ${num(r.stopPct)}% stop · ${num(r.maxHoldHours)}h max · ${num(r.costPctPerSide)}% cost/side`;
+
+  // An honest scorecard says when it means nothing. Below 20 closed trades a
+  // win rate is noise, and presenting it as a headline number would be the
+  // exact overclaim this panel exists to prevent.
+  if (!book.significant) {
+    note.style.display = "";
+    note.textContent = `${num(book.closedCount, 0)} closed trade(s) — too few to draw any conclusion. Needs 20+.`;
+  } else {
+    note.style.display = "none";
+  }
+
+  const tone = (v) => (Number(v) > 0 ? "up" : Number(v) < 0 ? "down" : "");
+  stats.innerHTML = [
+    ["open", num(book.openCount, 0)],
+    ["closed", num(book.closedCount, 0)],
+    ["win rate", book.winRate == null ? "—" : `${num(book.winRate)}%`],
+    ["median", book.medianReturnPct == null ? "—" : `${num(book.medianReturnPct)}%`],
+    ["best", book.bestPct == null ? "—" : `${num(book.bestPct)}%`],
+    ["worst", book.worstPct == null ? "—" : `${num(book.worstPct)}%`],
+    ["median peak", book.medianMfePct == null ? "—" : `${num(book.medianMfePct)}%`],
+  ].map(([k, v]) => `<div class="m-stat"><span class="m-stat-k">${escHtml(k)}</span><span class="m-stat-v">${escHtml(v)}</span></div>`).join("");
+
+  for (const p of book.open || []) {
+    const li = el("li", "book-item");
+    li.innerHTML = `<span class="meme-sym">${escHtml(p.symbol || "?")}</span>
+      <span class="book-band band-${cssToken(p.band)}">${escHtml(p.band || "")}</span>
+      <span class="book-pl ${tone(p.unrealisedPct)}">${num(p.unrealisedPct)}%</span>
+      <span class="book-age">${num(p.ageHours)}h</span>`;
+    openUl.appendChild(li);
+  }
+  if (!(book.open || []).length) openUl.innerHTML = `<li class="book-item muted">no open positions</li>`;
+
+  for (const c of book.recent || []) {
+    const li = el("li", "book-item");
+    li.innerHTML = `<span class="meme-sym">${escHtml(c.symbol || "?")}</span>
+      <span class="book-band band-${cssToken(c.band)}">${escHtml(c.band || "")}</span>
+      <span class="book-pl ${tone(c.netPct)}">${num(c.netPct)}%</span>
+      <span class="book-mfe" title="best it ever offered">peak ${num(c.mfePct)}%</span>
+      <span class="book-reason">${escHtml(c.reason || "")}</span>`;
+    closedUl.appendChild(li);
+  }
+  if (!(book.recent || []).length) closedUl.innerHTML = `<li class="book-item muted">nothing closed yet</li>`;
 }
 
 /* H1 momentum book — the forward test */

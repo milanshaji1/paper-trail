@@ -1,0 +1,94 @@
+name: Watch
+
+# The 24/7 half of the system. Runs whether or not the Mac is awake, which is
+# the whole point — most of the posts worth catching land overnight AEST.
+#
+# One workflow rather than two so the watchers cannot race each other pushing
+# the shared state branch.
+#
+# Latency note: GitHub's scheduled runs are best-effort and queue under load, so
+# real-world delay is 5-20 minutes. This is a "what did he just say and what
+# does it hit" tool, not an execution edge.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Score and log, but send no Telegram messages"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# Never let two runs write state at once.
+concurrency:
+  group: watch-state
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DJT_STATE_DIR: ${{ github.workspace }}/state
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # State lives on an orphan `djt-data` branch. Absent on the very first
+      # run, which is fine — the watchers bootstrap themselves.
+      - name: Restore state
+        run: |
+          mkdir -p state
+          if git ls-remote --exit-code --heads origin djt-data >/dev/null 2>&1; then
+            git fetch --depth=1 origin djt-data
+            git --work-tree=state checkout FETCH_HEAD -- . 2>/dev/null || true
+            echo "restored $(ls -1 state | wc -l) state file(s)"
+          else
+            echo "no djt-data branch yet — first run"
+          fi
+
+      - name: Trump posts and presidential actions
+        run: node scripts/djt-watch.js $DRY
+        env:
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      # Every 15 min rather than every 5: the safety providers are free services
+      # and we are a guest on them.
+      - name: Memecoin radar
+        env:
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          MIN=$(date -u +%-M)
+          if [ "$MANUAL" = "true" ] || [ "$(( MIN % 15 ))" -lt 5 ]; then
+            node scripts/meme-watch.js $DRY
+          else
+            echo "skipping — memecoin radar runs on the quarter hour (minute $MIN)"
+          fi
+
+      # Force-push an orphan branch: history stays at exactly one commit, so
+      # 288 runs a day don't bloat the repo. The JSON is cumulative anyway.
+      - name: Publish state
+        if: ${{ !inputs.dry_run }}
+        run: |
+          cd state
+          [ -n "$(ls -A .)" ] || { echo "no state to publish"; exit 0; }
+          git init -q -b djt-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "state $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            djt-data
+          echo "published to djt-data"

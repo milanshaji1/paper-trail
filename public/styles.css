@@ -489,3 +489,127 @@ select:focus { outline: none; border-color: var(--amber-line); }
   .dot.live { animation: none; }
   * { scroll-behavior: auto; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DJT Watch + Meme Radar
+   Reuses the existing chip/stat vocabulary. Band colour is carried by a left
+   rule rather than a filled background, so the alert list stays scannable at
+   density and green/red keep meaning price direction only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.djt-list, .meme-list, .meme-reject-list { list-style: none; margin: 0; padding: 0; }
+
+.djt-item, .meme-item {
+  border: 1px solid var(--line-soft);
+  border-left: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-2);
+  padding: 11px 13px;
+  margin-bottom: 8px;
+}
+.djt-item.band-high, .meme-item.band-high { border-left-color: var(--amber); }
+.djt-item.band-medium, .meme-item.band-medium { border-left-color: rgba(255, 178, 62, 0.42); }
+
+.djt-top, .meme-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+.djt-score {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  min-width: 30px; text-align: center;
+  padding: 2px 6px; border-radius: 3px;
+  background: var(--surface-2); border: 1px solid var(--line-soft); color: var(--text-dim);
+}
+.djt-score.band-high { color: var(--ink); background: var(--amber); border-color: var(--amber); }
+.djt-score.band-medium { color: var(--amber); background: var(--amber-soft); border-color: rgba(255,178,62,0.22); }
+
+.djt-src, .meme-net { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+.djt-session {
+  font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-faint); border: 1px solid var(--line-soft); border-radius: 3px; padding: 1px 5px;
+}
+.djt-when { font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-left: auto; }
+
+.djt-text { margin: 8px 0 9px; font-size: 12.5px; line-height: 1.5; color: var(--text); }
+
+.djt-tickers { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.djt-lbl {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-faint); margin-right: 1px;
+}
+.djt-lbl:not(:first-child) { margin-left: 7px; }
+
+.tkr {
+  font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 3px;
+  background: var(--surface); border: 1px solid var(--line-soft); color: var(--text-dim);
+}
+.tkr.named { color: var(--text); border-color: var(--line); }
+.tkr.up-chip { color: var(--up); border-color: var(--up-soft); background: var(--up-soft); }
+.tkr.down-chip { color: var(--down); border-color: var(--down-soft); background: var(--down-soft); }
+
+.djt-why {
+  font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+  margin-top: 9px; line-height: 1.55;
+}
+.djt-why a { color: var(--text-dim); }
+.djt-comp {
+  display: inline-block; margin-right: 7px; padding: 1px 5px;
+  border: 1px solid var(--line-soft); border-radius: 3px; color: var(--text-dim);
+  cursor: help;
+}
+
+/* ---- Meme radar ---- */
+.meme-sym { font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--text); }
+
+.meme-metrics, .meme-safety {
+  display: flex; gap: 13px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+  margin-top: 8px;
+}
+.meme-metrics b, .meme-safety b { color: var(--text-dim); font-weight: 500; }
+.meme-safety { padding-top: 7px; border-top: 1px solid var(--line-soft); }
+
+.ok-chip {
+  color: var(--up); border: 1px solid var(--up-soft); background: var(--up-soft);
+  border-radius: 3px; padding: 1px 5px;
+}
+.meme-flags { font-family: var(--mono); font-size: 10px; color: var(--amber); margin-top: 7px; }
+
+.meme-reject {
+  display: flex; align-items: baseline; gap: 9px;
+  font-family: var(--mono); font-size: 10.5px;
+  padding: 5px 2px; border-bottom: 1px solid var(--line-soft); color: var(--text-faint);
+}
+.meme-reject .meme-sym { font-size: 11px; color: var(--text-dim); min-width: 92px; }
+.rej-score { color: var(--text-faint); min-width: 22px; }
+.rej-why { color: var(--down); opacity: 0.85; }
+
+@media (max-width: 720px) {
+  .djt-when { margin-left: 0; width: 100%; }
+  .meme-metrics, .meme-safety { gap: 9px; }
+}
+
+/* ---------- Radar scorecard (simulated) ---------- */
+.sub-head {
+  font-family: var(--mono, "IBM Plex Mono", monospace);
+  font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--amber); margin: 18px 0 8px;
+}
+.book-list { list-style: none; margin: 0; padding: 0; }
+.book-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 9px 10px; border-bottom: 1px solid var(--line-soft);
+  font-family: var(--mono, "IBM Plex Mono", monospace); font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.book-item.muted { color: var(--text-faint); justify-content: center; }
+.book-item .meme-sym { min-width: 90px; font-weight: 600; }
+.book-band {
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 2px 6px; border: 1px solid var(--line); border-radius: 3px;
+  color: var(--text-dim);
+}
+.book-band.band-high { color: var(--amber); border-color: var(--amber); }
+.book-pl { min-width: 74px; text-align: right; font-weight: 600; }
+.book-pl.up { color: var(--up); }
+.book-pl.down { color: var(--down); }
+.book-mfe, .book-age { color: var(--text-faint); font-size: 11px; }
+.book-reason { margin-left: auto; color: var(--text-dim); font-size: 11px; }

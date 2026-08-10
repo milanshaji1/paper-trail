@@ -163,6 +163,108 @@ Run a backtest yourself from the Autopilot section, or `npm test` for the 60-tes
 > This gives context for headline-driven volatility. It does not predict how markets will
 > react to any future event. It flags exposure and tone, nothing more.
 
+## DJT Watch — phone alerts on market-moving posts
+
+Watches Trump's Truth Social feed plus the official policy record, scores each item for market
+impact, and pushes anything that clears the bar to Telegram. It runs on GitHub Actions every five
+minutes, so it works overnight AEST while your Mac is asleep.
+
+**Sources** (all free, no keys):
+
+| Source | What it catches |
+|---|---|
+| Truth Social, via the [CNN mirror](https://ix.cnn.io/data/truth-social/truth_archive.json) | Where his market-moving posts land first |
+| [whitehouse.gov/presidential-actions](https://www.whitehouse.gov/presidential-actions/feed/) | Executive orders, proclamations, memoranda |
+| [Federal Register API](https://www.federalregister.gov/developers/api/v1) | The official, structured policy record |
+
+There is **no X/Twitter coverage** — his X account is largely dormant, and every free bridge is
+dead (Nitter, RSSHub and RSS-Bridge were all tested and all fail). Truth Social is where it happens
+first anyway.
+
+The archive is 19 MB, so polling it naively would move ~5 GB/day. Instead the watcher sends a
+conditional `GET` — `304 Not Modified` most cycles — and only then pulls the first 24 KB with a
+`Range` request, which covers the newest ~20 posts.
+
+### Scoring
+
+Deterministic and keyless, so every alert decomposes into inputs you can check:
+
+| Component | Max | What it measures |
+|---|---|---|
+| Mechanism | 40 | Does it name a lever that reprices assets — tariffs, rates, export controls, sanctions, drug pricing? |
+| Entities | 25 | Named companies (`$TSLA`, "Apple"), the subject good, the counterparty country |
+| Modality | 15 | *"I am imposing a 50% tariff"* vs *"we're thinking about tariffs"* — the single biggest noise filter |
+| Specificity | 10 | Names a rate, an amount, a date |
+| Novelty | 10 | Recurring talking points decay toward zero |
+
+Attribution is **evidence-led**: a mechanism alone attributes nothing. A copper tariff maps to
+copper miners (FCX, SCCO) and the industries that buy copper — not to the semiconductor complex
+because "tariffs" nominally touches chips. Where a post both protects and hurts the same ticker, it
+is reported as mixed rather than claimed for both sides.
+
+The scorer also reads the formal register, because the Federal Register never says "tariff" — it
+says *"adjustment to competition from imports"*. Without that vocabulary the highest-signal source
+scores as noise.
+
+Calibrated against all 35,204 archived posts:
+
+```bash
+node scripts/djt-calibrate.js --band=high --sample=20
+```
+
+At the default threshold that is **~1 alert/day**. The distribution is bimodal with a natural gap
+at 30–39, and the 20–29 band is Daylight Saving Time opinions and book plugs — which is why the bar
+sits where it does. `DJT_BAND_MEDIUM` moves it.
+
+> Flags **plausible market relevance**. It does not predict direction, size or duration, and
+> nothing it produces is advice.
+
+## Meme Radar — early momentum, behind a hard safety gate
+
+Scores **acceleration, not level** — a token already trending is late by definition. It compares
+each token's 5- and 15-minute windows against its own hourly baseline (volume, unique buyers,
+buy/sell skew), rewards being early, small and not-yet-discussed, and penalises sell-dominant flow,
+wash-scale turnover and paid DexScreener promotion.
+
+Sources: GeckoTerminal (new + trending pools), DexScreener (paid-boost signal), 4chan `/biz/`
+(chatter, used only to tell "already loud" from "not yet"). All free, all keyless.
+
+**Safety runs first and rejects outright** — it is a gate, not a score component:
+
+- Solana via [RugCheck](https://rugcheck.xyz): rugged flag, live mint or freeze authority, top-10
+  concentration, holder count, risk score
+- EVM via [GoPlus](https://gopluslabs.io): honeypots, `cannot_sell_all`, pausable transfers,
+  confiscatory buy/sell taxes, unverified source, owner concentration
+- Both: token names using bidi/zero-width characters to disguise the symbol
+
+Thresholds were set empirically against positive controls. An earlier version rejected on RugCheck's
+insider-network flag and thereby filtered out BONK and WIF — i.e. every token that has ever actually
+worked — so that is now a warning rather than a rejection. The dashboard shows the rejection log
+beside the candidates, so the gate stays auditable instead of silently swallowing everything.
+
+> **Most new tokens go to zero and a meaningful share are deliberate rugs.** "Catch it early"
+> selects, by construction, for tokens that have not rugged *yet*. This is a shortlist to research,
+> never a signal to buy, and it is not advice.
+
+### Running the watchers
+
+```bash
+node scripts/djt-watch.js --dry-run
+```
+
+```bash
+node scripts/meme-watch.js --dry-run --show-all
+```
+
+Both print what they would send and write nothing. Live delivery needs `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_CHAT_ID` (see `.env.example`); without them the watchers still run, score and publish to
+the dashboard — they just stay silent. For the 24/7 run, set the two as GitHub repo secrets;
+`.github/workflows/watch.yml` does the rest and publishes state to an orphan `djt-data` branch that
+the dashboard reads.
+
+Latency is **5–20 minutes** — GitHub's scheduled runs are best-effort and queue under load. This is
+a *"what did he just say and what does it hit"* tool, not an execution edge.
+
 ## How it works
 
 - A small **Express** backend runs background refreshers that keep an in-memory
@@ -254,4 +356,17 @@ lib/crypto.js        CoinGecko provider
 lib/news.js          Google News RSS provider
 lib/indicators.js    RSI / SMA / returns + opportunity score
 public/              Frontend (index.html, styles.css, app.js)
+
+lib/telegram.js      Shared alert transport (no-ops without a token)
+lib/djt/impact.js    Market-impact scorer — pure, no I/O, unit-tested
+lib/djt/sources.js   Truth Social (conditional GET + byte range), WH RSS, Federal Register
+lib/djt/state.js     Seen-ids, alert log, HTTP caching metadata
+lib/djt/feed.js      Reads published state for the dashboard (local, else djt-data branch)
+lib/meme/momentum.js Acceleration scoring
+lib/meme/safety.js   The hard gate — RugCheck (Solana) + GoPlus (EVM)
+lib/meme/sources.js  GeckoTerminal, DexScreener, /biz/
+scripts/djt-watch.js     Watcher entrypoint (--dry-run, --verbose)
+scripts/meme-watch.js    Radar entrypoint (--dry-run, --show-all)
+scripts/djt-calibrate.js Replays the scorer over the full archive
+.github/workflows/       24/7 watcher + CI
 ```

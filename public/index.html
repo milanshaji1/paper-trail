@@ -40,6 +40,8 @@
         <a class="nav-item" data-section="watchlist" href="#watchlist"><span class="nav-key">05</span><span class="nav-label">Watchlist</span></a>
         <a class="nav-item" data-section="news" href="#news"><span class="nav-key">06</span><span class="nav-label">News</span></a>
         <a class="nav-item" data-section="autopilot" href="#autopilot"><span class="nav-key">07</span><span class="nav-label">Autopilot</span></a>
+        <a class="nav-item" data-section="djt" href="#djt"><span class="nav-key">08</span><span class="nav-label">DJT Watch</span></a>
+        <a class="nav-item" data-section="memes" href="#memes"><span class="nav-key">09</span><span class="nav-label">Meme Radar</span></a>
       </nav>
 
       <div class="sidebar-foot">
@@ -228,6 +230,53 @@
             <div class="an-section-label">Holdings <span class="hint" id="momentum-next"></span></div>
             <div class="table-wrap"><table id="momentum-positions" class="ticker-table"></table></div>
             <p class="empty-note" id="momentum-empty" style="display:none">No holdings yet. The first ranking runs shortly after launch.</p>
+          </div>
+        </section>
+
+        <!-- ===== DJT Watch ===== -->
+        <section id="djt" class="view-block">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Signal</span><h2>DJT Watch</h2></div>
+              <span class="hint" id="djt-updated"></span>
+            </div>
+            <p class="paper-note">Scores every Truth Social post, executive order and presidential document for market impact, and pushes the ones that clear the bar to Telegram. Scoring is deterministic — mechanism, named entities, how committed the language is, how specific, and how novel — so every number below decomposes into inputs you can check. It flags <strong>plausible market relevance</strong>; it does not predict direction or size.</p>
+            <div class="m-stats" id="djt-stats"></div>
+            <div class="an-section-label">Alert history</div>
+            <ul class="djt-list" id="djt-list"></ul>
+            <p class="empty-note" id="djt-empty" style="display:none">No alerts yet. The watcher publishes here once it has run.</p>
+          </div>
+        </section>
+
+        <!-- ===== Meme Radar (SIMULATED / research only) ===== -->
+        <section id="memes" class="view-block">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title"><span class="eyebrow">Radar</span><h2>Meme Radar</h2><span class="sim-badge">RESEARCH ONLY</span></div>
+              <span class="hint" id="meme-updated"></span>
+            </div>
+            <p class="paper-note">Scores <strong>acceleration, not level</strong> — a token already trending is late by definition. Every candidate must first clear a hard safety gate (RugCheck on Solana, GoPlus on EVM): live mint or freeze authority, honeypots, confiscatory sell taxes, concentrated supply and unverified contracts are rejected outright. <strong>Most new tokens go to zero, and this cannot tell you which.</strong> Treat it as a shortlist to research, never a signal to buy.</p>
+            <div class="m-stats" id="meme-stats"></div>
+            <div class="an-section-label">Candidates <span class="hint">: passed the safety gate</span></div>
+            <ul class="meme-list" id="meme-list"></ul>
+            <p class="empty-note" id="meme-empty" style="display:none">No candidates cleared the safety gate on the last run. That is the normal outcome.</p>
+            <div class="an-section-label">Rejected by the gate <span class="hint">: shown so the filter is auditable</span></div>
+            <ul class="meme-reject-list" id="meme-rejects"></ul>
+          </div>
+        </div>
+
+        <div class="panel sim-panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Radar scorecard <span class="sim-badge">SIMULATED · FAKE MONEY</span></h2>
+            <span class="hint" id="book-rules"></span>
+          </div>
+          <div class="panel-body">
+            <p class="empty-note" id="book-note"></p>
+            <div class="m-stats" id="book-stats"></div>
+            <h3 class="sub-head">Open positions</h3>
+            <ul class="book-list" id="book-open"></ul>
+            <h3 class="sub-head">Recently closed</h3>
+            <ul class="book-list" id="book-closed"></ul>
           </div>
         </section>
 
