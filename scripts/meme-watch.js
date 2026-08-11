@@ -9,6 +9,10 @@
 // then the safety gate — RugCheck is free and rate-limited, so we spend those
 // calls only on tokens that already look interesting.
 
+// Load .env before anything reads process.env. Without this the watcher
+// runs fine but silently never sends: GitHub Actions injects secrets as real
+// environment variables, so the gap only ever shows up locally.
+import "../lib/config.js";
 import { fetchCandidates, fetchBoosted, fetchBizChatter, fetchQuotes } from "../lib/meme/sources.js";
 import * as book from "../lib/meme/book.js";
 import { scoreToken, BANDS } from "../lib/meme/momentum.js";
@@ -23,6 +27,7 @@ const SHOW_ALL = flags.has("--show-all");
 const log = (m) => process.stdout.write(`${new Date().toISOString().slice(11, 19)} ${m}\n`);
 
 const s = state.load();
+log(`telegram: ${notify.configured() ? "configured" : "NOT configured — alerts will not be delivered"}`);
 
 const [{ tokens, errors }, boosted, { counts: chatter, ok: chatterOk }] = await Promise.all([
   fetchCandidates(),

@@ -8,6 +8,10 @@
 // Designed to be run from cron (GitHub Actions every 5 min). Exits non-zero
 // only on a total failure — a single dead source is logged, not fatal.
 
+// Load .env before anything reads process.env. Without this the watcher
+// runs fine but silently never sends: GitHub Actions injects secrets as real
+// environment variables, so the gap only ever shows up locally.
+import "../lib/config.js";
 import { fetchAll } from "../lib/djt/sources.js";
 import { scorePost, marketSession, BAND_MEDIUM } from "../lib/djt/impact.js";
 import { detectLaunch, confirmMarket } from "../lib/djt/launch.js";
@@ -22,6 +26,7 @@ const log = (m) => process.stdout.write(`${new Date().toISOString().slice(11, 19
 
 const s = state.load();
 const bootstrap = state.isBootstrap(s);
+log(`telegram: ${notify.configured() ? "configured" : "NOT configured — alerts will not be delivered"}`);
 
 const { posts, meta, errors, unchanged } = await fetchAll(s.meta);
 s.meta = meta;
