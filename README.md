@@ -1,4 +1,4 @@
-# PaperTrail — Live Stock Screener & Backtesting Engine
+# PaperTrail: live stock screener and backtesting engine
 
 A self-hosted market terminal that screens ~1,550 US stocks and the top 50 crypto every
 60 seconds, rates each name 1–5 from transparent sub-scores, and computes concrete
@@ -51,7 +51,7 @@ git clone https://github.com/milanshaji1/paper-trail.git
 cd paper-trail
 npm install
 npm start          # → http://localhost:4000
-npm test           # run the 60-test suite
+npm test           # run the full test suite
 ```
 
 No API keys are required. Copy `.env.example` → `.env` to optionally add free Finnhub / FRED keys.
@@ -146,7 +146,31 @@ is deliberate, and the tests cover it.
 That's why the momentum book runs forward: picks made before the outcome is known, no
 survivorship, no hindsight. Judge it over months.
 
-Run a backtest yourself from the Autopilot section, or `npm test` for the 60-test suite
+### Pinned manual holds
+
+You can also open a position by hand, bypassing the entry logic and the risk profile:
+
+```bash
+curl -X POST localhost:4000/api/paper/position \
+  -H 'Content-Type: application/json' \
+  -d '{"symbol":"VOO","amount":250}'
+```
+
+Pinned holds are never auto-closed. A 50% drawdown, an `AVOID` flip and a conviction collapse all
+leave them alone, while an identical unpinned position closes. They carry no stop, because a number
+the engine never acts on would imply protection that does not exist. They are still marked to market
+every cycle, and `summary()` reports them separately, since mixing owner decisions into the engine's
+closed-trade metrics would corrupt the record the book exists to produce.
+
+Foreign listings are converted rather than approximated. `VAS.AX` trades on the ASX in AUD while the
+book is denominated in USD; booking A$114.38 as US$114.38 would buy 2.19 shares instead of 3.09 and
+misstate equity from then on. Prices convert on entry and on every subsequent mark, because
+converting once is worse than not converting at all when later marks arrive in the local currency
+again. If the rate is briefly unavailable the last known one is held rather than falling back to 1,
+and a foreign position with no rate is refused rather than guessed. Auto-entry stays USD-only, since
+the entry logic compares raw prices.
+
+Run a backtest yourself from the Autopilot section, or `npm test` for the full suite
 (including the look-ahead guards that prove a decision at day *t* cannot see day *t+1*).
 
 ## Catalyst & macro radar
@@ -163,7 +187,7 @@ Run a backtest yourself from the Autopilot section, or `npm test` for the 60-tes
 > This gives context for headline-driven volatility. It does not predict how markets will
 > react to any future event. It flags exposure and tone, nothing more.
 
-## DJT Watch — phone alerts on market-moving posts
+## DJT Watch: phone alerts on market-moving posts
 
 Watches Trump's Truth Social feed plus the official policy record, scores each item for market
 impact, and pushes anything that clears the bar to Telegram. It runs on GitHub Actions every five
@@ -177,13 +201,13 @@ minutes, so it works overnight AEST while your Mac is asleep.
 | [whitehouse.gov/presidential-actions](https://www.whitehouse.gov/presidential-actions/feed/) | Executive orders, proclamations, memoranda |
 | [Federal Register API](https://www.federalregister.gov/developers/api/v1) | The official, structured policy record |
 
-There is **no X/Twitter coverage** — his X account is largely dormant, and every free bridge is
-dead (Nitter, RSSHub and RSS-Bridge were all tested and all fail). Truth Social is where it happens
-first anyway.
+There is **no X/Twitter coverage**. His X account is largely dormant, and every free bridge is dead:
+Nitter, RSSHub, RSS-Bridge and the syndication CDN were all tested and all fail. Truth Social is
+where it happens first anyway.
 
 The archive is 19 MB, so polling it naively would move ~5 GB/day. Instead the watcher sends a
-conditional `GET` — `304 Not Modified` most cycles — and only then pulls the first 24 KB with a
-`Range` request, which covers the newest ~20 posts.
+conditional `GET`, gets `304 Not Modified` on most cycles, and only then pulls the first 24 KB with
+a `Range` request. That covers the newest ~47 posts, roughly 30 hours of his output.
 
 ### Scoring
 
@@ -191,56 +215,81 @@ Deterministic and keyless, so every alert decomposes into inputs you can check:
 
 | Component | Max | What it measures |
 |---|---|---|
-| Mechanism | 40 | Does it name a lever that reprices assets — tariffs, rates, export controls, sanctions, drug pricing? |
+| Mechanism | 40 | Does it name a lever that reprices assets: tariffs, rates, export controls, sanctions, drug pricing? |
 | Entities | 25 | Named companies (`$TSLA`, "Apple"), the subject good, the counterparty country |
-| Modality | 15 | *"I am imposing a 50% tariff"* vs *"we're thinking about tariffs"* — the single biggest noise filter |
+| Modality | 15 | *"I am imposing a 50% tariff"* against *"we're thinking about tariffs"*. The single biggest noise filter |
 | Specificity | 10 | Names a rate, an amount, a date |
 | Novelty | 10 | Recurring talking points decay toward zero |
 
 Attribution is **evidence-led**: a mechanism alone attributes nothing. A copper tariff maps to
-copper miners (FCX, SCCO) and the industries that buy copper — not to the semiconductor complex
+copper miners (FCX, SCCO) and the industries that buy copper, not to the semiconductor complex
 because "tariffs" nominally touches chips. Where a post both protects and hurts the same ticker, it
 is reported as mixed rather than claimed for both sides.
 
-The scorer also reads the formal register, because the Federal Register never says "tariff" — it
-says *"adjustment to competition from imports"*. Without that vocabulary the highest-signal source
-scores as noise.
+The scorer reads formal register too. The Federal Register never says "tariff", it says
+*"adjustment to competition from imports"*, and a proclamation's commitment is the fact of the
+document rather than its phrasing. Without that vocabulary the highest-signal source scores as noise.
 
-Calibrated against all 35,204 archived posts:
+Calibrated against all 35,329 archived posts:
 
 ```bash
 node scripts/djt-calibrate.js --band=high --sample=20
 ```
 
-At the default threshold that is **~1 alert/day**. The distribution is bimodal with a natural gap
-at 30–39, and the 20–29 band is Daylight Saving Time opinions and book plugs — which is why the bar
-sits where it does. `DJT_BAND_MEDIUM` moves it.
+At the default threshold that is **~1 alert/day**. The distribution is bimodal with a natural gap at
+30–39, and the 20–29 band is Daylight Saving Time opinions and book plugs, which is why the bar sits
+where it does. `DJT_BAND_MEDIUM` moves it.
 
-> Flags **plausible market relevance**. It does not predict direction, size or duration, and
-> nothing it produces is advice.
+### What an alert says
 
-## Meme Radar — early momentum, behind a hard safety gate
+Each alert opens with two plain sentences: what the item is, and who it lands on.
 
-Scores **acceleration, not level** — a token already trending is late by definition. It compares
-each token's 5- and 15-minute windows against its own hourly baseline (volume, unique buyers,
-buy/sell skew), rewards being early, small and not-yet-discussed, and penalises sell-dominant flow,
+> **What it means:** The White House published a tariff measure on aluminum, already in force as
+> published. On the stated mechanism that is a tailwind for AA and CENX and a headwind for TSLA, F,
+> GM and RIVN (+4 more).
+
+The summary describes the mechanism's direction of pressure, never a price. Where the wording does
+not settle whether a measure is being applied or lifted, it says so and notes that both exposure
+lists flip on that answer.
+
+### Token launches
+
+A contract address or launchpad link bypasses the scoring bands entirely, because *"My NEW Official
+Trump Meme is HERE"* scores near zero on policy mechanisms. Checked against the full archive: three
+hits in 35,329 posts, all three real (the $TRUMP launch, its retruth, and $MELANIA). Those alerts
+carry the contract address and state the latency limit up front, because the historical repricing
+happened in minutes.
+
+> Flags **plausible market relevance**. It does not predict direction, size or duration, and nothing
+> it produces is advice.
+
+## Meme Radar: early momentum, behind a hard safety gate
+
+Scores **acceleration, not level**. A token already trending is late by definition. It compares each
+token's 5- and 15-minute windows against its own hourly baseline (volume, unique buyers, buy/sell
+skew), rewards being early, small and not-yet-discussed, and penalises sell-dominant flow,
 wash-scale turnover and paid DexScreener promotion.
 
 Sources: GeckoTerminal (new + trending pools), DexScreener (paid-boost signal), 4chan `/biz/`
 (chatter, used only to tell "already loud" from "not yet"). All free, all keyless.
 
-**Safety runs first and rejects outright** — it is a gate, not a score component:
+**Safety runs first and rejects outright.** It is a gate, not a score component:
 
 - Solana via [RugCheck](https://rugcheck.xyz): rugged flag, live mint or freeze authority, top-10
   concentration, holder count, risk score
 - EVM via [GoPlus](https://gopluslabs.io): honeypots, `cannot_sell_all`, pausable transfers,
   confiscatory buy/sell taxes, unverified source, owner concentration
-- Both: token names using bidi/zero-width characters to disguise the symbol
+- Both: token names using bidi or zero-width characters to disguise the symbol
 
-Thresholds were set empirically against positive controls. An earlier version rejected on RugCheck's
-insider-network flag and thereby filtered out BONK and WIF — i.e. every token that has ever actually
-worked — so that is now a warning rather than a rejection. The dashboard shows the rejection log
-beside the candidates, so the gate stays auditable instead of silently swallowing everything.
+Thresholds were set against positive controls. An earlier version rejected on RugCheck's
+insider-network flag, which filtered out BONK and WIF, meaning every token that has ever actually
+worked. That is now a warning rather than a rejection. The dashboard shows the rejection log beside
+the candidates, so the gate stays auditable instead of silently swallowing everything.
+
+Every alert also opens a simulated position in a forward paper-trading book, so the radar builds a
+visible record instead of asking to be trusted. Costs are charged at 3% per side, peak price is
+tracked separately from the exit (so a bad signal is distinguishable from a bad exit rule), and the
+scorecard refuses to report a win rate as meaningful below 20 closed trades.
 
 > **Most new tokens go to zero and a meaningful share are deliberate rugs.** "Catch it early"
 > selects, by construction, for tokens that have not rugged *yet*. This is a shortlist to research,
@@ -256,14 +305,25 @@ node scripts/djt-watch.js --dry-run
 node scripts/meme-watch.js --dry-run --show-all
 ```
 
-Both print what they would send and write nothing. Live delivery needs `TELEGRAM_BOT_TOKEN` and
-`TELEGRAM_CHAT_ID` (see `.env.example`); without them the watchers still run, score and publish to
-the dashboard — they just stay silent. For the 24/7 run, set the two as GitHub repo secrets;
-`.github/workflows/watch.yml` does the rest and publishes state to an orphan `djt-data` branch that
-the dashboard reads.
+Both print what they would send and write nothing.
 
-Latency is **5–20 minutes** — GitHub's scheduled runs are best-effort and queue under load. This is
-a *"what did he just say and what does it hit"* tool, not an execution edge.
+### Telegram delivery
+
+```bash
+node scripts/telegram-setup.js --from-clipboard
+```
+
+Reads the bot token from your clipboard, verifies it against Telegram, finds your chat id from the
+first message you send the bot, writes both to `.env` and fires a test alert. The token is never
+printed; only a masked fingerprint appears in the output. Create the bot first with `/newbot` in
+[@BotFather](https://t.me/BotFather).
+
+Without those two values the watchers still run, score and publish to the dashboard. They just stay
+silent. For the 24/7 run, set the same two as GitHub repo secrets; `.github/workflows/watch.yml`
+does the rest and publishes state to an orphan `djt-data` branch that the dashboard reads.
+
+Latency is **5–20 minutes**, because GitHub's scheduled runs are best-effort and queue under load.
+This is a *"what did he just say and what does it hit"* tool, not an execution edge.
 
 ## How it works
 
